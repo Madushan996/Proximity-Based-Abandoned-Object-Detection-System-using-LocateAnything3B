@@ -1,0 +1,75 @@
+# ============================================================
+# PADS — Proximity-Based Abandoned Object Detection System
+# Configuration File v1.0
+# All distance parameters are in metres.
+# All time parameters are in seconds unless noted.
+# ============================================================
+
+# --- Input ---
+input:
+  source: "SampleVideos/Sample2.mp4"   # Path to video file or camera index (0, 1, ...)
+  init_frames: 30                       # Frames averaged for scene initialisation snapshot
+
+# --- Coordinate System ---
+# If homography_enabled is false, pixel_scale_px_per_m is used as a flat
+# conversion factor (good enough for development; enable homography for
+# production deployment with physical marker calibration).
+coordinates:
+  homography_enabled: false
+  pixel_scale_px_per_m: 100            # Sample2: man ~1.8m tall ≈ 300px → ~167px/m near bottom
+                                       # Using 100 gives conservative (larger) metre values
+  # homography_points_file: "calibration/homography.json"  # used when enabled
+
+# --- Object Detection (M2 — Foreground) ---
+foreground:
+  method: "MOG2"                        # MOG2 or KNN
+  history: 300                          # Shorter history = faster background adaptation
+  var_threshold: 40                     # Lower = more sensitive (picks up stationary bags)
+  detect_shadows: true                  # Enable MOG2 shadow detection
+  shadow_threshold: 0.5                 # Pixel classified as shadow if ratio < threshold
+  morph_kernel_size: 5                  # Kernel size for morphological ops
+  dilate_iterations: 3                  # Extra dilation to merge bag blobs
+  erode_iterations: 1                   # Erosion passes before dilation
+  obj_min_area: 3000                    # Raised: bags are large; filters out small noise
+
+# --- Person Detection & Tracking (M3) ---
+person:
+  model: "yolov8n.pt"                   # YOLOv8 model weights (auto-downloaded if absent)
+  confidence: 0.4                       # Detection confidence threshold
+  iou: 0.5                              # NMS IoU threshold
+  tracker: "bytetrack.yaml"             # Tracker config (built into Ultralytics)
+  device: "auto"                        # "auto" (GPU if available, e.g. Colab T4), "cuda", or "cpu"
+  person_ttl_s: 300                     # Drop exited persons after this many seconds (memory bound)
+
+# --- Proximity Association Engine (M5) ---
+association:
+  proximity_radius_m: 2.5              # R — raised: camera is elevated, scale is large
+  pending_timeout_s: 10                # T_pending — time unassociated objects wait (s)
+  ownership_lookback_s: 10             # How far back to search a person's path for the
+                                       # drop point (recovers owners who already walked away)
+
+# --- Separation Monitoring (M6) ---
+separation:
+  separation_threshold_m: 3.0         # D — raised to match elevated camera scale
+  grace_period_s: 4                   # T_grace — short videos need a tighter grace window
+  window_s: 1.0                       # T_window — 1s smoothing window
+
+# --- Alarm Management (M7) ---
+alarm:
+  abandon_timeout_s: 3                # T_abandon — very short for 10s test videos
+                                      # (production default is 120s)
+  retrieve_window_s: 3                # T_retrieve — window to confirm retrieval
+  # retrieve_radius_m: 1.25           # Reach distance for a pick-up (defaults to R/2).
+                                      # Smaller = passers-by are less likely to cancel alarms.
+
+# --- Visualizer ---
+visualizer:
+  enabled: true
+  show_foreground_mask: false          # Show M2 debug mask in separate window
+  show_person_boxes: true
+  show_object_boxes: true
+  show_associations: true              # Draw line between person and associated object
+  show_distances: true
+  show_status_overlay: true
+  output_video: "output/output.mp4"    # Set to "" to disable video writing
+  fps_display: true

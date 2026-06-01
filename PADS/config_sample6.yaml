@@ -1,0 +1,59 @@
+# ============================================================
+# PADS — Config for Sample6.mp4
+# Scene: Indoor restaurant, fisheye lens (CAM 03)
+# Object: Grey backpack placed on floor mat near entrance
+# Challenges: Busy background (many seated diners moving),
+#             fisheye distortion, man exits through glass door
+# ============================================================
+
+input:
+  source: "SampleVideos/Sample6.mp4"
+  init_frames: 15                       # SHORT — bag is placed at ~t=2s; keep init under that
+
+coordinates:
+  homography_enabled: false
+  pixel_scale_px_per_m: 200             # Indoor close camera. Man ~500px tall at 1.8m → ~277px/m
+
+foreground:
+  method: "MOG2"
+  history: 500                          # Long — stationary bag takes 500 frames (~20s) to be absorbed
+  var_threshold: 16                     # MOG2 default — sensitive enough to catch bag on wooden mat
+  detect_shadows: false                 # CRITICAL: grey bag classified as shadow → filtered out
+  shadow_threshold: 0.5
+  morph_kernel_size: 7                  # Large kernel — merges the bag blob well
+  dilate_iterations: 4
+  erode_iterations: 3                   # Aggressive erosion kills small diner-noise blobs
+  obj_min_area: 10000                   # Backpack ~30000px²; seated-arm movements ~1000–3000px²
+  reference_diff_enabled: true          # Supplement MOG2 with ref-frame diff (bag absorbed by MOG2)
+  reference_diff_threshold: 35          # Pixel change threshold for diff mask (0–255)
+
+person:
+  model: "yolov8n.pt"
+  confidence: 0.35                      # Slightly lower — fisheye may clip person edges
+  iou: 0.5
+  tracker: "bytetrack.yaml"
+  device: "cpu"
+
+association:
+  proximity_radius_m: 1.0              # Tight — only associate to the person literally holding the bag
+  pending_timeout_s: 8                 # Seated diners won't be 1m from the floor drop point
+
+separation:
+  separation_threshold_m: 1.8         # Man walks to door (~4m away) — easily exceeds this
+  grace_period_s: 2                   # Short grace — deliberate abandonment
+  window_s: 0.8
+
+alarm:
+  abandon_timeout_s: 4                # Short for 16s test video
+  retrieve_window_s: 3
+
+visualizer:
+  enabled: true
+  show_foreground_mask: false
+  show_person_boxes: true
+  show_object_boxes: true
+  show_associations: true
+  show_distances: true
+  show_status_overlay: true
+  output_video: "output/output_sample6.mp4"
+  fps_display: true

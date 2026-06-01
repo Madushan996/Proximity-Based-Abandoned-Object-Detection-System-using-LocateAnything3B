@@ -1,0 +1,11 @@
+# Deploy machine (your Windows box) only needs the Modal client — the heavy
+# ML stack (torch/transformers/ultralytics) is installed INSIDE the Modal
+# image (see modal_app.py), not here.
+modal>=0.64
+
+# --- Optional: only if you run the PADS loop LOCALLY and call the Modal
+#     /detect endpoint over HTTP (foreground.locateanything.endpoint_url).
+#     The model itself still runs on Modal's GPU.
+requests
+# The local PADS loop additionally needs (already in the PADS project):
+#   opencv-python, ultralytics, numpy, pyyaml

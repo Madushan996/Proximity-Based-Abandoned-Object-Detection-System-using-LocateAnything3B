@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Runtime artifacts (regenerated on every run)
+PADS/output/
+PADS/logs/
+PADS/debug_frames/
+PADS/debug_luggage/
+PADS/debug_s10/
+PADS/storefront/
+PADS/SampleVideos/previews/
+**/*.log
+
+# Local tooling / editor state
+.claude/
+.idea/
+.vscode/
+.DS_Store
+
+# Modal local state
+.modal.toml

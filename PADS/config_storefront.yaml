@@ -1,0 +1,167 @@
+# ================================================================
+# PADS — Config for City Grocers Storefront Camera
+# ================================================================
+# Scene:   Outdoor urban sidewalk, corner storefront (City Grocers)
+# Camera:  High-angle wide-angle/fisheye, corner-mounted, ~50° tilt
+#          Covers full sidewalk (~8m wide × 6m deep) + entrance
+# Typical objects to catch:
+#          Bags, backpacks, suitcases, boxes left on the pavement
+#
+# KEY CHALLENGES observed from scene snapshots:
+#   1. DRAMATIC lighting changes — bright sun / moving lamp-post shadow
+#      / dusk transition / full night store illumination / rainy overcast
+#   2. Wet pavement (rain) changes concrete pixel values entirely
+#   3. Moving shadow from lamp post sweeps across pavement (daytime)
+#   4. Permanent fixtures: trash can + bench must not be flagged
+#   5. People sit on the bench — bench area will show fg change on exit
+#   6. Busy periods: 15+ people on sidewalk simultaneously (img 7)
+#   7. People carry bags / backpacks — must not alarm until LEFT behind
+#   8. Fisheye lens — perspective distortion at edges; persons appear
+#      ~200px tall at mid-pavement depth → ~120px/m scale estimate
+# ================================================================
+
+input:
+  source: "SampleVideos/luggage.mp4"       # ← replace with your video filename
+  init_frames: 30                          # 1.25s at 24fps — suits short 8s test
+                                           # clips where the subject enters at ~t=2s.
+                                           # Increase to 72 (3s) for longer footage
+                                           # to give MOG2 more background warmup.
+
+coordinates:
+  homography_enabled: false
+  pixel_scale_px_per_m: 120               # High-angle wide-angle camera.
+                                           # Person ~200px tall at 1.7m real
+                                           # height → ~118px/m at mid-pavement.
+                                           # Rounded to 120 for safety margin.
+
+foreground:
+  # ── Detection method ──────────────────────────────────────────────────
+  # "MOG2"  : adaptive background subtraction (default). Fast, but produces
+  #           ghost objects from shadows, lighting changes, and wet pavement.
+  # "KNN"   : KNN-based background subtractor. Similar to MOG2.
+  # "YOLO"  : YOLO object detector (requires yolo_object section below).
+  #           Detects specific object classes — zero ghost objects.
+  #           Best accuracy; slower than MOG2 on CPU.
+  method: "MOG2"
+  # method: "YOLO"                        # ← uncomment to switch to YOLO M2
+
+  # ── YOLO M2 settings (only used when method: "YOLO") ─────────────────
+  # yolo_object:
+  #   model: "yolov8x.pt"                 # larger model = better accuracy
+  #   classes: [24, 26, 28]               # 24=backpack, 26=handbag, 28=suitcase
+  #   confidence: 0.30                    # lower = catch more; raises FP rate
+  #   stability_frames: 3                 # frames a detection must persist
+  #   iou_match: 0.40                     # IoU to match across frames
+
+  history: 800                            # LONG — this camera sees slow and
+                                           # dramatic background changes:
+                                           # day/night cycle, wet→dry pavement,
+                                           # shifting store interior lighting.
+                                           # 800 frames lets MOG2 adapt slowly
+                                           # without triggering on every cloud.
+  var_threshold: 55                        # Higher than indoor — outdoor concrete
+                                           # has natural texture variation, rain
+                                           # reflections, and lamp-post shadow
+                                           # movement. This suppresses most of
+                                           # those false triggers.
+  detect_shadows: true                     # CRITICAL for this scene. The lamp post
+                                           # casts a long moving shadow across the
+                                           # pavement (clearly visible in image 10).
+                                           # Without shadow detection, that sweeping
+                                           # shadow would register as a huge moving
+                                           # foreground blob on every sunny day.
+  shadow_threshold: 0.5                    # MOG2 default — shadow pixel brightness
+                                           # ratio relative to background.
+  morph_kernel_size: 7                     # Larger kernel — suppresses the many
+                                           # small noise sources: concrete texture,
+                                           # puddle reflections, leaf debris.
+  dilate_iterations: 3                     # Fills gaps inside object blobs.
+  erode_iterations: 2                      # Extra erosion vs. indoor configs —
+                                           # outdoor noise is coarser/sparser.
+  obj_min_area: 4000                       # At 120px/m scale, a medium backpack
+                                           # (~0.45m × 0.35m) ≈ 54px × 42px ≈
+                                           # 2300px². With dilation: ~4000–6000px².
+                                           # This filters wind-blown litter and
+                                           # small shadow artifacts while catching
+                                           # any bag-sized or larger object.
+  # ── Persistence filter (eliminates ghost blobs from moving persons) ───
+  persistence_enabled: true
+  persistence_threshold: 120  # Higher than indoor — busy sidewalk has more
+                              # transient activity from passing pedestrians.
+  persistence_add: 25
+  persistence_decay: 8
+
+  # ── Background freeze ─────────────────────────────────────────────────
+  freeze_after_init: false    # KEEP FALSE for this storefront camera.
+                              # The background changes dramatically between
+                              # day/night, wet/dry pavement, and seasonal
+                              # lighting. Freezing would cause mass false
+                              # positives within minutes. Let MOG2 keep
+                              # adapting, and rely on the persistence filter
+                              # + reference_diff to catch stationary objects.
+
+  reference_diff_enabled: false            # NOT suitable for this camera. The
+                                           # background changes so dramatically
+                                           # between day/night and wet/dry that
+                                           # any saved reference frame becomes
+                                           # invalid within minutes, causing
+                                           # massive false positives.
+
+person:
+  model: "yolov8n.pt"
+  confidence: 0.35                         # Standard. Fisheye distortion at the
+                                           # frame edges may slightly reduce
+                                           # confidence for persons near corners —
+                                           # keep threshold low enough to catch them.
+  iou: 0.5
+  tracker: "bytetrack.yaml"
+  device: "cpu"
+
+association:
+  proximity_radius_m: 2.5                  # Person sets down a bag and stands
+                                           # near the entrance within arm's reach.
+                                           # 2.5m covers natural drop-and-stand
+                                           # behaviour without pulling in
+                                           # unrelated passersby on the busy
+                                           # sidewalk.
+  pending_timeout_s: 6                     # Retry association for 6s after first
+                                           # detection. Suits short test clips.
+                                           # Increase to 12s for live/long footage.
+
+separation:
+  separation_threshold_m: 3.5             # Person typically enters the store
+                                           # (through the glass door, 3–4m from
+                                           # where they left the bag on the
+                                           # pavement). 3.5m ensures the alarm
+                                           # does not trigger while the person
+                                           # is still near the entrance.
+  grace_period_s: 2                        # 2s suits short 8s test clips.
+                                           # Increase to 6s for live deployment
+                                           # to avoid false separations in a
+                                           # busy urban environment.
+  window_s: 1.5                            # Larger sliding window than indoor
+                                           # configs — suppresses distance jitter
+                                           # caused by multiple passersby briefly
+                                           # appearing closer to the object than
+                                           # the actual owner.
+
+alarm:
+  abandon_timeout_s: 3                     # ← TESTING VALUE for short 8s clips.
+                                           # Change to 120 (2 min) for real
+                                           # deployment at the storefront.
+  retrieve_window_s: 5                     # ← TESTING VALUE. Change to 30s
+                                           # for live deployment.
+
+visualizer:
+  enabled: true
+  show_foreground_mask: false
+  show_person_boxes: true
+  show_object_boxes: true
+  show_associations: true
+  show_distances: true
+  show_status_overlay: true
+  output_video: "output/output_storefront.mp4"  # always overwrites with latest run
+  fps_display: true
+  # Side-by-side debug window: left=PADS output, right=raw M2 detections
+  # Shows every blob before the area filter, colour-coded by pass/fail.
+  show_debug_display: true

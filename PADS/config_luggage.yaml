@@ -1,0 +1,87 @@
+# ================================================================
+# PADS — Config for luggage.mp4
+# Camera : City Grocers storefront (same as config_storefront.yaml)
+# Scene  : Man walks in from right with rolling suitcase, leaves it
+#          on the pavement near the entrance and walks away
+# Video  : 8s @ 24fps (192 frames), 1280x720, scene starts clean
+#
+# This is config_storefront.yaml with 3 values tightened for the
+# short test clip. For production use, switch to config_storefront.yaml.
+# ================================================================
+
+input:
+  source: "SampleVideos/luggage.mp4"
+  init_frames: 30              # Man enters at ~t=2s (frame 48).
+                               # 30 frames = 1.25s of clean empty pavement
+                               # before he appears — enough to lock in the
+                               # bench, trash can and concrete as background.
+
+coordinates:
+  homography_enabled: false
+  pixel_scale_px_per_m: 120   # Same camera as storefront snapshots.
+                               # Man ~230px tall at ~1.7m → ~135px/m;
+                               # 120 used as conservative ground-plane estimate.
+
+foreground:
+  method: "MOG2"         # change to "YOLO" to use YOLO-based object detection
+  # yolo_object:
+  #   model: "yolov8x.pt"
+  #   classes: [24, 26, 28]
+  #   confidence: 0.30
+  #   stability_frames: 3
+  #   iou_match: 0.40
+  history: 800
+  var_threshold: 55            # Outdoor concrete + moving light/shadow
+  detect_shadows: true         # Lamp-post shadow visible on pavement
+  shadow_threshold: 0.5
+  morph_kernel_size: 7
+  dilate_iterations: 3
+  erode_iterations: 2
+  obj_min_area: 4000           # Upright suitcase ~60×80px ≈ 4800px² at this scale
+  reference_diff_enabled: false
+
+  # ── Persistence filter (eliminates ghost blobs from moving persons) ───
+  persistence_enabled: true
+  persistence_threshold: 100  # heat units needed to confirm a blob
+  persistence_add: 25         # heat added per frame when foreground present
+  persistence_decay: 8        # heat lost per frame when absent
+                              # Ghost blob lasting 3 frames: max heat = 75 < 100 → filtered
+                              # Real stationary object: reaches 100 in 4 frames, stays there
+
+  # ── Background freeze (prevents MOG2 absorbing stationary objects) ────
+  freeze_after_init: true     # Safe for short test clips (stable lighting).
+                              # Set false for 24/7 live cameras with day/night cycles.
+
+person:
+  model: "yolov8n.pt"
+  confidence: 0.35
+  iou: 0.5
+  tracker: "bytetrack.yaml"
+  device: "cpu"
+
+association:
+  proximity_radius_m: 2.5
+  pending_timeout_s: 8
+
+separation:
+  separation_threshold_m: 3.5
+  grace_period_s: 2            # Tighter than production (was 6s) — short clip
+  window_s: 1.0
+
+alarm:
+  abandon_timeout_s: 3         # ← TEST VALUE. Video is 8s; man leaves ~t=5s
+                               #   so alarm needs to fire by t=8s. Set to 3s.
+                               #   Change to 120 for real deployment.
+  retrieve_window_s: 5
+
+visualizer:
+  enabled: true
+  show_foreground_mask: false
+  show_person_boxes: true
+  show_object_boxes: true
+  show_associations: true
+  show_distances: true
+  show_status_overlay: true
+  output_video: "output/output_luggage.mp4"
+  fps_display: true
+  show_debug_display: true    # side-by-side M2 debug window

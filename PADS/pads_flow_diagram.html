@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PADS — System Flow Diagram</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+    letter-spacing: 1px;
+    margin-bottom: 36px;
+    text-transform: uppercase;
+  }
+
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ── generic node ── */
+  .node {
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-align: center;
+    position: relative;
+  }
+  .node .tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .node .title {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .node .desc {
+    font-size: 11px;
+    opacity: 0.75;
+    margin-top: 3px;
+    line-height: 1.5;
+  }
+
+  /* ── colours ── */
+  .input-node   { background: #1e293b; border: 2px solid #334155; width: 260px; }
+  .init-node    { background: #1a2744; border: 2px solid #3b5ea6; }
+  .m2-node      { background: #1a3040; border: 2px solid #0891b2; }
+  .m3-node      { background: #1a2e2a; border: 2px solid #059669; }
+  .m4-node      { background: #2a2040; border: 2px solid #7c3aed; }
+  .m5-node      { background: #2a2010; border: 2px solid #d97706; }
+  .m6-node      { background: #2a1a10; border: 2px solid #ea580c; }
+  .m7-node      { background: #2a1010; border: 2px solid #dc2626; }
+  .output-node  { background: #101a10; border: 2px solid #16a34a; }
+  .decision     { background: #1e1e10; border: 2px solid #ca8a04; }
+
+  /* ── arrows ── */
+  .arrow {
+    width: 2px;
+    background: #334155;
+    height: 24px;
+    position: relative;
+    margin: 0 auto;
+  }
+  .arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #334155;
+  }
+
+  .arrow-label {
+    font-size: 10px;
+    color: #64748b;
+    text-align: center;
+    margin: -4px 0 2px;
+  }
+
+  /* ── parallel block ── */
+  .parallel-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 860px;
+  }
+
+  .parallel-label {
+    font-size: 10px;
+    color: #475569;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .per-frame-box {
+    border: 2px dashed #334155;
+    border-radius: 16px;
+    padding: 20px 24px 24px;
+    width: 100%;
+    position: relative;
+  }
+
+  .per-frame-label {
+    position: absolute;
+    top: -11px;
+    left: 24px;
+    background: #0f1117;
+    padding: 0 8px;
+    font-size: 10px;
+    color: #64748b;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .parallel-row {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  .parallel-node {
+    flex: 1;
+    max-width: 260px;
+    border-radius: 10px;
+    padding: 14px 14px;
+    text-align: center;
+  }
+
+  .parallel-connector {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    margin: 0;
+  }
+
+  .parallel-line {
+    flex: 1;
+    max-width: 260px;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* ── decision diamond ── */
+  .diamond-wrap {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    position: relative;
+  }
+
+  .diamond {
+    width: 160px;
+    height: 60px;
+    background: #1e1e10;
+    border: 2px solid #ca8a04;
+    border-radius: 6px;
+    transform: perspective(600px) rotateX(10deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fbbf24;
+    text-align: center;
+    padding: 8px;
+    flex-shrink: 0;
+  }
+
+  .branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .branch-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .yes-label { color: #dc2626; }
+  .no-label  { color: #16a34a; }
+
+  /* ── output row ── */
+  .output-row {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .output-chip {
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 160px;
+  }
+
+  .chip-alarm   { background: #450a0a; border: 1.5px solid #dc2626; color: #fca5a5; }
+  .chip-log     { background: #0c1a0c; border: 1.5px solid #16a34a; color: #86efac; }
+  .chip-video   { background: #0c1224; border: 1.5px solid #3b82f6; color: #93c5fd; }
+  .chip-snap    { background: #1a0c24; border: 1.5px solid #a855f7; color: #d8b4fe; }
+
+  /* ── loop back indicator ── */
+  .loop-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .loop-line {
+    width: 60px;
+    height: 2px;
+    background: #334155;
+  }
+  .loop-text {
+    font-size: 10px;
+    color: #475569;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* ── legend ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid #1e293b;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ── state badges ── */
+  .states {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 6px;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  /* horizontal split arrow */
+  .h-arrow {
+    width: 40px;
+    height: 2px;
+    background: #334155;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .h-arrow::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid #334155;
+  }
+
+  .wide { width: 640px; }
+  .medium { width: 440px; }
+  .narrow { width: 260px; }
+</style>
+</head>
+<body>
+
+<h1>PADS</h1>
+<div class="subtitle">Proximity-Based Abandoned Object Detection System — Pipeline Flow</div>
+
+<div class="diagram">
+
+  <!-- INPUT -->
+  <div class="node input-node">
+    <span class="tag">Input</span>
+    <div class="title">📷 Video Feed</div>
+    <div class="desc">File (.mp4) · Webcam · IP Camera (RTSP)</div>
+  </div>
+
+  <div class="arrow"></div>
+
+  <!-- M1 SCENE INIT -->
+  <div class="node init-node narrow">
+    <span class="tag" style="color:#6ea8fe">M1 — Runs Once at Startup</span>
+    <div class="title" style="color:#93c5fd">Scene Initialisation</div>
+    <div class="desc">Warm up MOG2 over first 30 frames<br>Detect all existing objects → mark <strong>pre_existing = true</strong><br>These are never flagged as abandoned</div>
+  </div>
+
+  <div class="arrow" style="height:32px"></div>
+
+  <!-- PER-FRAME LOOP -->
+  <div class="parallel-container">
+    <div class="per-frame-box">
+      <div class="per-frame-label">↻ Per-Frame Loop — runs on every frame</div>
+
+      <!-- M3 + M2 parallel row -->
+      <div class="parallel-row" style="margin-bottom: 0;">
+        <div class="parallel-node m3-node" style="flex:1; max-width:280px">
+          <span class="tag" style="color:#6ee7b7">M3</span>
+          <div class="title" style="color:#6ee7b7">Person Detection & Tracking</div>
+          <div class="desc">YOLOv8n detects all persons<br>ByteTrack assigns persistent IDs<br>Records foot-point (bottom-centre)</div>
+        </div>
+        <div style="display:flex; align-items:center; color:#334155; font-size:18px; font-weight:300">⟵ runs first ⟶</div>
+        <div class="parallel-node m2-node" style="flex:1; max-width:280px">
+          <span class="tag" style="color:#67e8f9">M2</span>
+          <div class="title" style="color:#67e8f9">Foreground Detection</div>
+          <div class="desc">MOG2 background subtraction<br>Morphological clean-up<br>Person-overlap filter → skip person blobs<br>Register new object blobs</div>
+        </div>
+      </div>
+
+      <!-- converge arrows -->
+      <div class="parallel-row" style="margin-top:0">
+        <div class="parallel-line"><div class="arrow" style="height:20px"></div></div>
+        <div style="width:100px"></div>
+        <div class="parallel-line"><div class="arrow" style="height:20px"></div></div>
+      </div>
+
+      <!-- M4 -->
+      <div class="node m4-node" style="width:100%; margin-bottom:0">
+        <span class="tag" style="color:#c4b5fd">M4</span>
+        <div class="title" style="color:#c4b5fd">Coordinate Mapping</div>
+        <div class="desc">Pixel (px, py) → World (metres)<br>Flat scale <em>or</em> full Homography (H matrix) for perspective correction<br>All distances from here on are in real-world metres</div>
+      </div>
+
+      <div class="arrow" style="height:20px"></div>
+
+      <!-- M5 -->
+      <div class="node m5-node" style="width:100%">
+        <span class="tag" style="color:#fcd34d">M5 — Event-Driven (fires on new object)</span>
+        <div class="title" style="color:#fcd34d">Proximity Association Engine</div>
+        <div class="desc">
+          New object detected → find nearest in-frame person<br>
+          If distance ≤ <strong>R (1.5m)</strong> → lock association (object_id ↔ person_id)<br>
+          If distance &gt; R → pending queue, retry for <strong>T_pending (10s)</strong><br>
+          Tiebreak: closest wins · if tied, longer dwell time wins
+        </div>
+        <div class="states" style="margin-top:8px">
+          <span class="badge" style="background:#292009; color:#fcd34d; border:1px solid #92400e">NEW</span>
+          <span style="font-size:14px; color:#475569">→</span>
+          <span class="badge" style="background:#1a2e20; color:#6ee7b7; border:1px solid #065f46">ASSOCIATED</span>
+          <span style="font-size:11px; color:#475569">or</span>
+          <span class="badge" style="background:#1e1e10; color:#fbbf24; border:1px solid #78350f">PENDING</span>
+        </div>
+      </div>
+
+      <div class="arrow" style="height:20px"></div>
+
+      <!-- M6 -->
+      <div class="node m6-node" style="width:100%">
+        <span class="tag" style="color:#fdba74">M6 — Every Frame</span>
+        <div class="title" style="color:#fdba74">Separation Monitor</div>
+        <div class="desc">
+          Compute sliding-window avg distance (person ↔ object) over last <strong>T_window (1s)</strong><br>
+          If avg dist &gt; <strong>D (2.0m)</strong> continuously for &gt; <strong>T_grace (4s)</strong> → SEPARATION EVENT<br>
+          If person returns within R before T_grace → cancel, reset to ASSOCIATED
+        </div>
+        <div class="states" style="margin-top:8px">
+          <span class="badge" style="background:#1a2e20; color:#6ee7b7; border:1px solid #065f46">ASSOCIATED</span>
+          <span style="font-size:14px; color:#475569">→</span>
+          <span class="badge" style="background:#2a1a10; color:#fb923c; border:1px solid #9a3412">OF INTEREST</span>
+        </div>
+      </div>
+
+      <div class="arrow" style="height:20px"></div>
+
+      <!-- M7 -->
+      <div class="node m7-node" style="width:100%">
+        <span class="tag" style="color:#fca5a5">M7 — Continuous</span>
+        <div class="title" style="color:#fca5a5">Alarm & Event Manager</div>
+        <div class="desc">
+          Watch for person-of-interest exiting frame → start <strong>T_abandon (120s)</strong> countdown<br>
+          During countdown: check if anyone retrieves the object<br>
+          If object retrieved → CANCEL alarm<br>
+          If T_abandon expires with no retrieval → <strong>DISPATCH ALARM</strong>
+        </div>
+        <div class="states" style="margin-top:8px">
+          <span class="badge" style="background:#2a1a10; color:#fb923c; border:1px solid #9a3412">OF INTEREST</span>
+          <span style="font-size:14px; color:#475569">→</span>
+          <span class="badge" style="background:#0c1a0c; color:#86efac; border:1px solid #14532d">RETRIEVED</span>
+          <span style="font-size:11px; color:#475569">or</span>
+          <span class="badge" style="background:#450a0a; color:#fca5a5; border:1px solid #7f1d1d">ALARMED</span>
+        </div>
+      </div>
+
+    </div><!-- /per-frame-box -->
+  </div><!-- /parallel-container -->
+
+  <div class="arrow" style="height:28px"></div>
+
+  <!-- OUTPUTS -->
+  <div style="text-align:center; font-size:10px; color:#64748b; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:12px">Outputs</div>
+  <div class="output-row">
+    <div class="output-chip chip-video">🎬 Annotated Video<br><span style="font-size:10px; opacity:0.7">output/output.mp4</span></div>
+    <div class="output-chip chip-alarm">🚨 Alarm Dispatch<br><span style="font-size:10px; opacity:0.7">Webhook / MQTT / REST</span></div>
+    <div class="output-chip chip-snap">📸 Snapshot Frame<br><span style="font-size:10px; opacity:0.7">logs/ALARM_XXXX.jpg</span></div>
+    <div class="output-chip chip-log">📋 Event Log<br><span style="font-size:10px; opacity:0.7">logs/events.jsonl</span></div>
+  </div>
+
+  <div style="margin-top:20px; display:flex; align-items:center; gap:12px; color:#334155">
+    <div style="width:2px; height:40px; background:#1e3a5f; margin-left:0"></div>
+    <div style="font-size:10px; color:#475569; letter-spacing:1px">↻ LOOP BACK — next frame</div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#3b5ea6"></div>M1 Scene Init (once)
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#059669"></div>M3 Person Tracking
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#0891b2"></div>M2 Foreground Detection
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#7c3aed"></div>M4 Coordinate Mapping
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#d97706"></div>M5 Association Engine
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#ea580c"></div>M6 Separation Monitor
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#dc2626"></div>M7 Alarm Manager
+    </div>
+  </div>
+
+  <!-- OBJECT STATE MACHINE -->
+  <div style="margin-top:40px; width:100%; max-width:860px;">
+    <div style="font-size:11px; color:#64748b; letter-spacing:1.5px; text-transform:uppercase; text-align:center; margin-bottom:16px">Object Lifecycle — State Machine</div>
+    <div style="display:flex; align-items:center; justify-content:center; gap:0; flex-wrap:wrap; row-gap:12px">
+
+      <div class="badge" style="background:#292009; color:#fcd34d; border:1.5px solid #92400e; padding:6px 14px; font-size:11px">NEW</div>
+      <div style="display:flex; flex-direction:column; align-items:center; margin: 0 6px">
+        <div style="font-size:9px; color:#64748b">within R</div>
+        <div style="font-size:16px; color:#475569">→</div>
+      </div>
+      <div class="badge" style="background:#1a2e20; color:#6ee7b7; border:1.5px solid #065f46; padding:6px 14px; font-size:11px">ASSOCIATED</div>
+      <div style="display:flex; flex-direction:column; align-items:center; margin: 0 6px">
+        <div style="font-size:9px; color:#64748b">dist &gt; D, &gt; T_grace</div>
+        <div style="font-size:16px; color:#475569">→</div>
+      </div>
+      <div class="badge" style="background:#2a1a10; color:#fb923c; border:1.5px solid #9a3412; padding:6px 14px; font-size:11px">OF INTEREST</div>
+      <div style="display:flex; flex-direction:column; align-items:center; margin: 0 6px">
+        <div style="font-size:9px; color:#64748b">T_abandon expires</div>
+        <div style="font-size:16px; color:#475569">→</div>
+      </div>
+      <div class="badge" style="background:#450a0a; color:#fca5a5; border:1.5px solid #7f1d1d; padding:6px 14px; font-size:11px">🚨 ALARMED</div>
+
+      <div style="width:100%; display:flex; justify-content:center; margin-top:8px; gap:32px; font-size:10px; color:#475569">
+        <span>↳ no person near R → <strong style="color:#fbbf24">PENDING</strong> → retry T_pending → <strong style="color:#64748b">EXPIRED</strong></span>
+        <span>↳ someone picks it up → <strong style="color:#6ee7b7">RETRIEVED</strong> (alarm cancelled)</span>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /diagram -->
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+# ============================================================
+# PADS — LocateAnything-3B (M2 = open-vocabulary VLM detector)
+# Drop-in config for the existing PADS pipeline. Use with:
+#   • Modal app  → values here are mirrored in modal_app.py:_base_config()
+#   • Local PADS → python main.py --config ../LocateAnything/config_locateanything.yaml
+#     (local mode requires foreground.locateanything.endpoint_url to point at
+#      the deployed Modal /detect endpoint, since the model needs an Ampere GPU)
+# ============================================================
+
+input:
+  source: "SampleVideos/Sample2.mp4"
+  init_frames: 15            # VLM needs no long warm-up; a short snapshot is enough
+
+coordinates:
+  homography_enabled: false
+  pixel_scale_px_per_m: 100
+
+# --- M2: LocateAnything open-vocabulary detection ---
+foreground:
+  method: "LOCATEANYTHING"
+  obj_min_area: 1500
+  locateanything:
+    # Natural-language classes — describe what an abandoned item looks like.
+    categories: ["backpack", "handbag", "suitcase", "luggage", "bag", "box", "trolley", "duffel bag"]
+    infer_every_frames: 24   # run the VLM ~1x/sec @24fps; re-emit boxes in between
+    stability_frames: 2      # confirm across N inference calls before emitting
+    iou_match: 0.40
+    resize_long_side: 768    # downscale long edge before inference (0 = full res)
+    generation_mode: "hybrid"  # hybrid = MTP fast-path, confirmed working on sdpa.
+                               # "slow" = pure autoregressive fallback if needed.
+    # endpoint_url: "https://<your-app>.modal.run/detect"  # only for local PADS
+
+# --- M3: person detection & tracking (runs on the same GPU container) ---
+person:
+  model: "yolov8n.pt"
+  confidence: 0.4
+  iou: 0.5
+  tracker: "bytetrack.yaml"
+  device: "auto"
+  person_ttl_s: 300
+
+# --- M5 / M6 / M7: unchanged PADS abandonment logic ---
+association:
+  proximity_radius_m: 2.5
+  pending_timeout_s: 10
+  ownership_lookback_s: 10
+
+separation:
+  separation_threshold_m: 3.0
+  grace_period_s: 4
+  window_s: 1.0
+
+alarm:
+  abandon_timeout_s: 5       # raise to 120 for production
+  retrieve_window_s: 3
+
+visualizer:
+  enabled: true
+  show_person_boxes: true
+  show_object_boxes: true
+  show_associations: true
+  show_distances: true
+  show_status_overlay: true
+  output_video: ""

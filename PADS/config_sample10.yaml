@@ -1,0 +1,64 @@
+# ============================================================
+# PADS — Config for Sample10.mp4
+# Scene: Outdoor front porch, close-range fixed camera
+# Object: Cardboard box placed on porch steps by lady
+# Challenges:
+#   - Lady enters at frame 5 — only 4 clean background frames exist
+#   - MOG2 absorbs the static box as it has no clean reference for it
+#   - Close-range camera: pixel_scale ~230px/m (person ~400px tall at 1.7m)
+#   - Box splits into 3 separate diff blobs (top/front/shadow faces) → large kernel
+#   - Very short video (8s) → short timeouts throughout
+# ============================================================
+
+input:
+  source: "SampleVideos/Sample10.mp4"
+  init_frames: 4               # CRITICAL: lady enters at frame 5; use only the 4 clean frames
+
+coordinates:
+  homography_enabled: false
+  pixel_scale_px_per_m: 230    # Lady ~400px tall at 1.7m real height → 235px/m
+
+foreground:
+  method: "MOG2"
+  history: 300
+  var_threshold: 60            # Higher threshold — MOG2 is unreliable here (poor init);
+                               # we rely primarily on reference_diff for the box
+  detect_shadows: false        # Shadows off — cleaner mask for both MOG2 and ref_diff
+  shadow_threshold: 0.5
+  morph_kernel_size: 9         # Large kernel — merges the 3 separate box face blobs
+  dilate_iterations: 5         # Aggressive dilation to bridge gaps between box face blobs
+  erode_iterations: 2
+  obj_min_area: 11000          # Box separately detected at ~12-13k px²; left-edge artifacts are 9-10k → filtered
+  reference_diff_enabled: true # CRITICAL: ref_diff detects box even when MOG2 absorbs it
+  reference_diff_threshold: 30 # Concrete noise max diff ~36px → threshold just above that
+
+person:
+  model: "yolov8n.pt"
+  confidence: 0.35
+  iou: 0.5
+  tracker: "bytetrack.yaml"
+  device: "cpu"
+
+association:
+  proximity_radius_m: 3.0      # At t=4s: box centroid ~456px from lady foot → 2.0m at 230px/m
+  pending_timeout_s: 4         # Retry association for 4s after first detection
+
+separation:
+  separation_threshold_m: 2.0  # Lady walks ~3-4m away to exit frame
+  grace_period_s: 1
+  window_s: 0.5
+
+alarm:
+  abandon_timeout_s: 2         # 8s video: box detected ~t=4s, lady gone ~t=5s → alarm ~t=7s
+  retrieve_window_s: 2
+
+visualizer:
+  enabled: true
+  show_foreground_mask: false
+  show_person_boxes: true
+  show_object_boxes: true
+  show_associations: true
+  show_distances: true
+  show_status_overlay: true
+  output_video: "output/output_sample10.mp4"
+  fps_display: true
