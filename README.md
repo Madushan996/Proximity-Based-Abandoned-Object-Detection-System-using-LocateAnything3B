@@ -12,6 +12,29 @@ plays back the annotated result with a live alarm log.
 
 ---
 
+## 🎬 Demo
+
+https://github.com/Madushan996/Proximity-Based-Abandoned-Object-Detection-System-using-LocateAnything3B/raw/main/demovideos/Demo1.mp4
+
+https://github.com/Madushan996/Proximity-Based-Abandoned-Object-Detection-System-using-LocateAnything3B/raw/main/demovideos/Demo2.mp4
+
+https://github.com/Madushan996/Proximity-Based-Abandoned-Object-Detection-System-using-LocateAnything3B/raw/main/demovideos/Demo3.mp4
+
+> If a video doesn't play inline, click it to open the player, or grab the files
+> from the [`demovideos/`](demovideos) folder:
+> [Demo1](demovideos/Demo1.mp4) · [Demo2](demovideos/Demo2.mp4) · [Demo3](demovideos/Demo3.mp4).
+
+## 📸 Screenshots
+
+| | |
+|---|---|
+| ![Crowded station — people tracked and luggage detected/associated (PADS mode)](screenshots/1.png) | ![Alarm raised on an unattended bag (PADS mode)](screenshots/1b.png) |
+| **Crowded station** — people tracked, luggage detected & associated to owners. | **Alarm raised** — an unattended bag trips the abandon timer. |
+| ![Owner-to-object association with live distance (PADS mode)](screenshots/2.png) | ![Object-labeling overlay mode detecting a package](screenshots/1c.png) |
+| **Association** — owner↔object link with live distance readout. | **Object-labeling mode** — open-vocabulary detection overlay. |
+
+---
+
 ## ✨ What it does
 
 Given a video, the system continuously asks: *"Is there an object sitting here
